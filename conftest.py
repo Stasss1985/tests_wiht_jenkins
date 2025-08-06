@@ -14,10 +14,10 @@ from pages.shop_page.shop_sale_page import ShopSalePage
 from pages.person_page.person_page import PersonPage
 
 
-@pytest.fixture(scope="session", autouse=True)
-def play_sound_after_tests():
-    yield
-    winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
+#@pytest.fixture(scope="session", autouse=True)
+#def play_sound_after_tests():
+    #yield
+   # winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
     # winsound.Beep(1000, 500)
 
 
