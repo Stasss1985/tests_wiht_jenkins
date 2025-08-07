@@ -7,6 +7,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 import logging
 import allure
 import os
+from pathlib import Path
 import datetime
 from selenium.webdriver.common.by import By
 
