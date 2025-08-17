@@ -11,28 +11,37 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Set custom DNS
-        run: |
-          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
-
       - name: Install WireGuard
         run: |
           sudo apt-get update
           sudo apt-get install -y wireguard resolvconf
 
-      - name: Configure WireGuard
+      - name: Configure WireGuard with fallback DNS
         run: |
           echo "${{ secrets.WG_CONFIG }}" > wg0.conf
+          # Добавляем резервные DNS-серверы
+          echo "DNS = 10.10.251.254, 8.8.8.8, 1.1.1.1" >> wg0.conf
           sudo mv wg0.conf /etc/wireguard/
           sudo chmod 600 /etc/wireguard/wg0.conf
 
-      - name: Start WireGuard
+      - name: Start WireGuard with debug
         run: |
+          sudo systemctl restart systemd-resolved
           sudo wg-quick up wg0
+          # Проверяем подключение
+          sudo wg show
+          ip a show wg0
+          resolvectl status wg0
+          cat /etc/resolv.conf
+
+      - name: Add hosts entry (если DNS всё равно не работает)
+        run: |
+          echo "109.235.189.130 erp-test.karman24.ru" | sudo tee -a /etc/hosts
 
       - name: Verify CRM access
         run: |
-          curl -sSf https://erp-test.karman24.ru/auth || exit 1
+          ping -c 4 erp-test.karman24.ru || true
+          curl -v --connect-timeout 10 https://erp-test.karman24.ru/auth || exit 1
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -44,3 +53,4 @@ jobs:
         if: always()
         run: |
           sudo wg-quick down wg0 || true
+          sudo sed -i '/erp-test.karman24.ru/d' /etc/hosts || true
