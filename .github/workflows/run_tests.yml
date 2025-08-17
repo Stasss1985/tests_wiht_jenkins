@@ -20,8 +20,14 @@ jobs:
       - name: Configure WireGuard
         run: |
           echo "${{ secrets.WG_CONFIG }}" > wg0.conf
-          # Убедимся, что весь трафик идет через VPN
-          sed -i 's/AllowedIPs = .*/AllowedIPs = 0.0.0.0\/0/' wg0.conf
+          # Удаляем все упоминания DNS и отключаем resolvconf
+          sed -i '/DNS = /d' wg0.conf
+          sed -i '/DNS /d' wg0.conf
+          sed -i '/resolvconf/d' wg0.conf
+          sed -i '/PreUp/d' wg0.conf
+          sed -i '/PostUp/d' wg0.conf
+          sed -i '/PreDown/d' wg0.conf
+          sed -i '/PostDown/d' wg0.conf
           sudo mv wg0.conf /etc/wireguard/
           sudo chmod 600 /etc/wireguard/wg0.conf
 
@@ -34,9 +40,21 @@ jobs:
           echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf
           sudo chattr -i /etc/resolv.conf || true
 
-      - name: Start WireGuard
+      - name: Start WireGuard manually
         run: |
-          sudo wg-quick up wg0
+          # Создаем интерфейс вручную
+          sudo ip link add dev wg0 type wireguard || true
+          
+          # Применяем конфигурацию WireGuard
+          sudo wg setconf wg0 /etc/wireguard/wg0.conf
+          
+          # Настраиваем IP-адрес
+          sudo ip address add 10.10.251.15/32 dev wg0
+          
+          # Устанавливаем MTU и поднимаем интерфейс
+          sudo ip link set mtu 1420 up dev wg0
+          
+          # Проверяем подключение
           echo "=== WG Status ==="
           sudo wg show
           echo "=== Interface ==="
@@ -75,5 +93,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo wg-quick down wg0 || true
+          sudo ip link delete dev wg0 || true
           sudo sed -i '/erp-test.karman24.ru/d' /etc/hosts || true
