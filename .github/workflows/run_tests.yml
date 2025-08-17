@@ -7,41 +7,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install WireGuard
+      - name: Install WireGuard and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y wireguard resolvconf
+          sudo apt-get install -y wireguard resolvconf dnsutils
 
-      - name: Configure WireGuard with fallback DNS
+      - name: Configure WireGuard
         run: |
           echo "${{ secrets.WG_CONFIG }}" > wg0.conf
-          # Добавляем резервные DNS-серверы
-          echo "DNS = 10.10.251.254, 8.8.8.8, 1.1.1.1" >> wg0.conf
+          # Принудительно устанавливаем надежные DNS
+          sed -i 's/DNS = .*/DNS = 8.8.8.8, 1.1.1.1/' wg0.conf
           sudo mv wg0.conf /etc/wireguard/
           sudo chmod 600 /etc/wireguard/wg0.conf
 
-      - name: Start WireGuard with debug
+      - name: Start WireGuard with DNS fix
         run: |
-          sudo systemctl restart systemd-resolved
+          # Отключаем systemd-resolved (может мешать в GitHub Actions)
+          sudo systemctl stop systemd-resolved || true
+          sudo systemctl disable systemd-resolved || true
+          
+          # Принудительно устанавливаем DNS
+          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+          
+          # Поднимаем VPN
           sudo wg-quick up wg0
-          # Проверяем подключение
+          
+          # Диагностика
+          echo "=== WG Status ==="
           sudo wg show
+          echo "=== Interface ==="
           ip a show wg0
-          resolvectl status wg0
+          echo "=== DNS Config ==="
           cat /etc/resolv.conf
+          echo "=== NSLookup Test ==="
+          nslookup erp-test.karman24.ru || true
 
-      - name: Add hosts entry (если DNS всё равно не работает)
+      - name: Add hosts entry as fallback
         run: |
           echo "109.235.189.130 erp-test.karman24.ru" | sudo tee -a /etc/hosts
+          echo "=== Ping Test ==="
+          ping -c 4 erp-test.karman24.ru || true
 
       - name: Verify CRM access
         run: |
-          ping -c 4 erp-test.karman24.ru || true
-          curl -v --connect-timeout 10 https://erp-test.karman24.ru/auth || exit 1
+          echo "=== Curl Test ==="
+          curl -v --connect-timeout 15 https://erp-test.karman24.ru/auth || exit 1
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -49,8 +64,10 @@ jobs:
       - name: Run tests
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
 
-      - name: Stop WireGuard (cleanup)
+      - name: Cleanup
         if: always()
         run: |
           sudo wg-quick down wg0 || true
           sudo sed -i '/erp-test.karman24.ru/d' /etc/hosts || true
+          sudo systemctl enable systemd-resolved || true
+          sudo systemctl start systemd-resolved || true
