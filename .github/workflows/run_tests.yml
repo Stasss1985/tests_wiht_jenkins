@@ -7,13 +7,18 @@ jobs:
     runs-on: ubuntu-latest
     name: Run autotests
     steps:
-      - name: Check out sourse repository
-        uses: actions/checkout@v5
-      - name: Set up Python environment
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Check CRM availability
+        run: |
+          if ! curl -sSf --retry 3 --retry-delay 5 https://erp-test.karman24.ru/auth > /dev/null; then
+            echo "CRM is unreachable!"
+            exit 1
+          fi
       - name: Run tests
-        run: pytest -v tests/test_add_product_no_contract.py --headless
+        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
+        
