@@ -5,20 +5,23 @@ on: [push]
 jobs:
   run-tests:
     runs-on: ubuntu-latest
-    name: Run autotests
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.10'
+      
+      - name: Connect to VPN
+        uses: docker://openvpn/cloudconnexa-connect
+        with:
+          config: ${{ secrets.VPN_CONFIG }}
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Check CRM availability
+
+      - name: Verify CRM access
         run: |
-          if ! curl -sSf --retry 3 --retry-delay 5 https://erp-test.karman24.ru/auth > /dev/null; then
-            echo "CRM is unreachable!"
-            exit 1
-          fi
+          curl -sSf https://erp-test.karman24.ru/auth || exit 1
+
       - name: Run tests
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
-        
