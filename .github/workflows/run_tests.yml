@@ -11,7 +11,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt    
 
       - name: Install WireGuard
         run: |
@@ -31,9 +34,6 @@ jobs:
       - name: Verify VPN connection
         run: |
           ping -c 4 erp-test.karman24.ru || echo "VPN connection failed"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
 
       - name: Run tests
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
