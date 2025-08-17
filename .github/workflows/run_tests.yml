@@ -15,37 +15,37 @@ jobs:
       - name: Install WireGuard and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y wireguard resolvconf dnsutils
+          sudo apt-get install -y wireguard openresolv
 
       - name: Configure WireGuard
         run: |
           echo "${{ secrets.WG_CONFIG }}" > wg0.conf
-          # Принудительно устанавливаем надежные DNS
-          sed -i 's/DNS = .*/DNS = 8.8.8.8, 1.1.1.1/' wg0.conf
+          # Удаляем стандартный DNS, если он есть
+          sed -i '/DNS = /d' wg0.conf
+          # Добавляем надежные DNS
+          echo "DNS = 8.8.8.8, 1.1.1.1" >> wg0.conf
           sudo mv wg0.conf /etc/wireguard/
           sudo chmod 600 /etc/wireguard/wg0.conf
 
-      - name: Start WireGuard with DNS fix
+      - name: Setup DNS manually
         run: |
-          # Отключаем systemd-resolved (может мешать в GitHub Actions)
+          # Полностью отключаем systemd-resolved
           sudo systemctl stop systemd-resolved || true
           sudo systemctl disable systemd-resolved || true
-          
-          # Принудительно устанавливаем DNS
+          sudo rm -f /etc/resolv.conf
           echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+
+      - name: Start WireGuard
+        run: |
+          sudo wg-quick up wg0 || (sudo wg-quick down wg0; exit 1)
           
-          # Поднимаем VPN
-          sudo wg-quick up wg0
-          
-          # Диагностика
+          # Проверяем подключение
           echo "=== WG Status ==="
           sudo wg show
           echo "=== Interface ==="
           ip a show wg0
           echo "=== DNS Config ==="
           cat /etc/resolv.conf
-          echo "=== NSLookup Test ==="
-          nslookup erp-test.karman24.ru || true
 
       - name: Add hosts entry as fallback
         run: |
@@ -69,5 +69,3 @@ jobs:
         run: |
           sudo wg-quick down wg0 || true
           sudo sed -i '/erp-test.karman24.ru/d' /etc/hosts || true
-          sudo systemctl enable systemd-resolved || true
-          sudo systemctl start systemd-resolved || true
