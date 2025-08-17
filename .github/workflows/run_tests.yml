@@ -20,10 +20,8 @@ jobs:
       - name: Configure WireGuard
         run: |
           echo "${{ secrets.WG_CONFIG }}" > wg0.conf
-          # Удаляем стандартный DNS, если он есть
+          # Удаляем DNS из конфига, так как будем управлять вручную
           sed -i '/DNS = /d' wg0.conf
-          # Добавляем надежные DNS
-          echo "DNS = 8.8.8.8, 1.1.1.1" >> wg0.conf
           sudo mv wg0.conf /etc/wireguard/
           sudo chmod 600 /etc/wireguard/wg0.conf
 
@@ -43,8 +41,11 @@ jobs:
 
       - name: Start WireGuard with manual DNS
         run: |
-          # Используем опцию --no-resolvconf чтобы избежать ошибок
-          sudo wg-quick up wg0 --no-resolvconf || (sudo wg-quick down wg0; exit 1)
+          # Поднимаем интерфейс
+          sudo ip link add dev wg0 type wireguard || true
+          sudo wg setconf wg0 /etc/wireguard/wg0.conf
+          sudo ip address add 10.10.251.15/32 dev wg0
+          sudo ip link set mtu 1420 up dev wg0
           
           # Проверяем подключение
           echo "=== WG Status ==="
@@ -76,5 +77,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo wg-quick down wg0 || true
+          sudo ip link delete dev wg0 || true
           sudo sed -i '/erp-test.karman24.ru/d' /etc/hosts || true
