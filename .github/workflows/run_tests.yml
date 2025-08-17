@@ -54,8 +54,14 @@ jobs:
           sudo ip address add 10.10.251.15/32 dev wg0
           sudo ip link set mtu 1420 up dev wg0
           
+          # Удаляем конфликтующие маршруты по умолчанию
+          sudo ip route del default via 10.1.0.1 dev eth0 || true
+          
           # Добавляем маршрут по умолчанию через VPN
           sudo ip route add default dev wg0
+          
+          # Даем время на установление соединения
+          sleep 5
           
           # Проверяем подключение
           echo "=== WG Status ==="
@@ -65,7 +71,7 @@ jobs:
           echo "=== Routing Table ==="
           ip route show
           echo "=== VPN Endpoint ==="
-          curl -s ifconfig.me
+          curl -s --retry 3 ifconfig.me || curl -s --retry 3 icanhazip.com || echo "Unable to get public IP"
 
       - name: Add hosts entry
         run: |
