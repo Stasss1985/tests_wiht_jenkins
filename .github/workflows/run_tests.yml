@@ -12,10 +12,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install WireGuard
+      - name: Install WireGuard and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y wireguard
+          sudo apt-get install -y wireguard net-tools traceroute tcptraceroute
 
       - name: Configure WireGuard
         run: |
@@ -27,43 +27,42 @@ jobs:
 
       - name: Setup DNS manually
         run: |
-          # Отключаем systemd-resolved
           sudo systemctl stop systemd-resolved || true
           sudo systemctl disable systemd-resolved || true
-          
-          # Создаем новый resolv.conf
           sudo rm -f /etc/resolv.conf
           echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
           echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf
-          
-          # Разрешаем изменения resolv.conf
           sudo chattr -i /etc/resolv.conf || true
 
-      - name: Start WireGuard with DNS bypass
+      - name: Start WireGuard
         run: |
-          # Поднимаем интерфейс с помощью wg-quick
           sudo wg-quick up wg0
-          
-          # Проверяем подключение
           echo "=== WG Status ==="
           sudo wg show
           echo "=== Interface ==="
           ip a show wg0
-          echo "=== DNS Config ==="
-          cat /etc/resolv.conf
-          echo "=== NSLookup Test ==="
-          nslookup google.com || true
+          echo "=== Routing Table ==="
+          ip route show
 
-      - name: Add hosts entry as fallback
+      - name: Add hosts entry
         run: |
           echo "109.235.189.130 erp-test.karman24.ru" | sudo tee -a /etc/hosts
+
+      - name: Network diagnostics
+        run: |
           echo "=== Ping Test ==="
-          ping -c 4 erp-test.karman24.ru || true
+          ping -c 4 109.235.189.130 || true
+          echo "=== Traceroute Test ==="
+          traceroute -T -p 443 109.235.189.130 || true
+          echo "=== Port Check (443) ==="
+          nc -zv 109.235.189.130 443 || true
+          echo "=== TCP Connection Test ==="
+          timeout 15 bash -c "cat < /dev/null > /dev/tcp/109.235.189.130/443" && echo "Port 443 is open" || echo "Port 443 is closed"
 
       - name: Verify CRM access
         run: |
           echo "=== Curl Test ==="
-          curl -v --connect-timeout 15 https://erp-test.karman24.ru/auth || exit 1
+          curl -v --connect-timeout 15 https://109.235.189.130/auth || exit 1
 
       - name: Install dependencies
         run: pip install -r requirements.txt
