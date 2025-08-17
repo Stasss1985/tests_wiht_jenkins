@@ -10,18 +10,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      
+
       - name: Connect to VPN
-        uses: docker://openvpn/cloudconnexa-connect
+        uses: kornicameister/openvpn-connect-action@v1
         with:
           config: ${{ secrets.VPN_CONFIG }}
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Verify CRM access
-        run: |
-          curl -sSf https://erp-test.karman24.ru/auth || exit 1
 
       - name: Run tests
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
