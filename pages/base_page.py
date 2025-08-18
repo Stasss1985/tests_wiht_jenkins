@@ -24,7 +24,7 @@ logging.getLogger('WDM').propagate = False  # Запретить передач�
 
 
 class BasePage:
-    base_url = 'https://erp-test.karman24.ru'
+    base_url = 'https://www.google.com'
     page_url = None
 
     def __init__(self, driver: WebDriver):
