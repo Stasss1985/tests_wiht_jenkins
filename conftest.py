@@ -103,5 +103,5 @@ def open_crm_as_admin(login_page):
     with allure.step('enter correct login and password'):
         login_page.fill_login_form_good('krivko.su@codeagency.ru', 'DLNKsfd3214$%23')
     with allure.step('Check correct url'):
-        login_page.check_expected_url('https://erp-test.karman24.ru/')
+        login_page.check_expected_url('https://www.google.com/')
     login_page.take_screenshot()
