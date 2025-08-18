@@ -1,5 +1,5 @@
 import pytest
-#import winsound
+# import winsound
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -12,13 +12,14 @@ import allure
 from webdriver_manager.chrome import ChromeDriverManager
 from pages.shop_page.shop_sale_page import ShopSalePage
 from pages.person_page.person_page import PersonPage
+from pages.base_page import BasePage
 
 
-#@pytest.fixture(scope="session", autouse=True)
-#def play_sound_after_tests():
-    #yield
-   # winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
-    # winsound.Beep(1000, 500)
+# @pytest.fixture(scope="session", autouse=True)
+# def play_sound_after_tests():
+# yield
+# winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
+# winsound.Beep(1000, 500)
 
 
 @pytest.fixture(scope="function")
@@ -52,16 +53,11 @@ def driver(request):
     try:
         yield chrome_driver
     except Exception as e:
-        # Делаем скриншот при падении теста
-        screenshot_name = f"screenshot_failure_{request.node.name}.png"
         try:
-            chrome_driver.save_screenshot(screenshot_name)
-            allure.attach.file(
-                screenshot_name,
-                name=screenshot_name,
-                attachment_type=allure.attachment_type.PNG
-            )
-            print(f"Screenshot saved as {screenshot_name}")
+            # Создаем экземпляр BasePage и используем его метод take_screenshot
+            base_page = BasePage(chrome_driver)
+            base_page.take_screenshot(f"failure_{request.node.name}")
+            print(f"Screenshot saved for failed test: {request.node.name}")
         except Exception as screenshot_error:
             print(f"Failed to take screenshot: {screenshot_error}")
         raise e  # Пробрасываем оригинальную ошибку
