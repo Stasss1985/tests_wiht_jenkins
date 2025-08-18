@@ -42,8 +42,6 @@ def driver(request):
     # Явная установка размера окна
     if request.config.getoption("--headless"):
         chrome_driver.set_window_size(2560, 1600)
-
-        # Дополнительная настройка через DevTools Protocol
         chrome_driver.execute_cdp_cmd("Emulation.setDeviceMetricsOverride", {
             "width": 2560,
             "height": 1600,
@@ -53,7 +51,22 @@ def driver(request):
 
     try:
         yield chrome_driver
+    except Exception as e:
+        # Делаем скриншот при падении теста
+        screenshot_name = f"screenshot_failure_{request.node.name}.png"
+        try:
+            chrome_driver.save_screenshot(screenshot_name)
+            allure.attach.file(
+                screenshot_name,
+                name=screenshot_name,
+                attachment_type=allure.attachment_type.PNG
+            )
+            print(f"Screenshot saved as {screenshot_name}")
+        except Exception as screenshot_error:
+            print(f"Failed to take screenshot: {screenshot_error}")
+        raise e  # Пробрасываем оригинальную ошибку
     finally:
+        # Всегда закрываем драйвер
         chrome_driver.quit()
 
 
