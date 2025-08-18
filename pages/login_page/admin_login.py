@@ -14,7 +14,7 @@ class AdminLoc():
 
 class AdminLogin(BasePage):
     loc = AdminLoc
-    page_url = '/auth'
+    page_url = None
 
     def fill_login_form_good(self, login, password):
         self.wait_clickable(self.loc.BUTTON)
