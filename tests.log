@@ -3128,3 +3128,6 @@ er ======
 2025-08-18 15:56:43,083 - ERROR - Element with locator ('id', 'password') not found.
 2025-08-18 15:56:43,471 - ERROR - Element with locator ('id', 'password') not found.
 2025-08-18 15:56:43,980 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-19 10:34:24,432 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-19 10:34:54,928 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-19 10:35:25,595 - ERROR - Element with locator ('id', 'password') not found.

@@ -20,30 +20,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13.3'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install allure-pytest
 
       - name: run smoke tests (auto-push)
         if: "github.event_name == 'push'"
-        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless
+        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
 
       - name: run smoke tests
         if: "github.event.inputs.test_type == 'smoke'"
-        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless
+        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
 
       - name: run regression tests
         if: "github.event.inputs.test_type == 'regress'"
-        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless
+        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
 
       - name: run extended tests
         if: "github.event.inputs.test_type == 'extended'"
-        run: pytest -m extended -n 16 -v tests/test_add_product_no_contract.py --headless
+        run: pytest -m extended -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
 
       - name: run all tests
         if: "github.event.inputs.test_type == 'all'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless
+        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'microsoft'
+
+      # Скачивание и установка Allure Command Line
+      - name: Install Allure CLI
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
+          tar -zxvf allure-2.34.1.tgz
+          echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
+          # Или альтернативный вариант:
+          # sudo apt-get update
+          # sudo apt-get install -y allure       
+
+      - name: Generate Allure report
+        if: always()
+        run: |
+          allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-report
+          path: allure-report
+          retention-days: 1
