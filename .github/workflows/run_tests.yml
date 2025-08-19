@@ -1,6 +1,19 @@
 name: Python autotests
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type (smoke/regress/extended/all)'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+        - smoke
+        - regress
+        - extended
+        - all
 
 jobs:
   run-tests:
