@@ -28,13 +28,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: run smoke tests (auto)
+        if: "github.event_name == 'push'"
+        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless
+
       - name: run smoke tests
         if: "github.event.inputs.test_type == 'smoke'"
         run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless
 
       - name: run regression tests
-        if: "github.event.inputs.test_type == 'regression'"
-        run: pytest -m regression -n 16 -v tests/test_add_product_no_contract.py --headless
+        if: "github.event.inputs.test_type == 'regress'"
+        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless
 
       - name: run extended tests
         if: "github.event.inputs.test_type == 'extended'"
