@@ -3087,3 +3087,44 @@ er ======
 2025-07-01 16:47:59,703 - ERROR - Element with locator ('css selector', '[class="p-button p-component p-button-icon-only p-speeddial-button p-button-rounded"]') not clickable after 30 seconds.
 2025-07-01 16:50:00,574 - ERROR - Element with locator ('css selector', '[class="p-button p-component p-button-icon-only p-speeddial-button p-button-rounded"]') not clickable after 30 seconds.
 2025-07-01 16:50:44,883 - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000026D8A625F30>: Failed to establish a new connection: [WinError 10061] Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение')': /session/0967a69c5d1581881b662d5d4ea105c2
+2025-08-18 09:55:16,814 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 10:01:41,244 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 10:02:11,664 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 10:02:42,198 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 10:06:25,910 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 10:06:56,316 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 10:07:26,876 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 13:40:35,781 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:40:36,471 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:40:36,482 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:40:37,039 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:41:05,886 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 13:41:06,539 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 13:41:07,075 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 13:41:36,078 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 13:41:36,771 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 13:41:36,771 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 13:41:37,289 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 13:59:11,163 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:59:13,378 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:59:13,379 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:59:13,469 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 13:59:41,211 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 13:59:43,444 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 13:59:43,976 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 14:00:11,495 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 14:00:13,703 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 14:00:13,703 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 14:00:14,161 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 15:55:41,009 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 15:55:42,769 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 15:55:42,865 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 15:55:43,278 - ERROR - Element with locator ('class name', 'btn.btn-primary') not clickable after 30 seconds.
+2025-08-18 15:56:11,017 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 15:56:12,868 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 15:56:13,275 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 15:56:13,784 - ERROR - Element with locator ('id', 'email') not found.
+2025-08-18 15:56:41,221 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 15:56:43,083 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 15:56:43,471 - ERROR - Element with locator ('id', 'password') not found.
+2025-08-18 15:56:43,980 - ERROR - Element with locator ('id', 'password') not found.
