@@ -88,6 +88,10 @@ jobs:
     name: Report publication
     runs-on: ubuntu-latest
     needs: run-tests
+    permissions:
+      id-token: write   # Необходимо для OIDC
+      contents: read    # Минимальное разрешение для доступа к репозиторию
+      pages: write      # Для публикации Pages
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
