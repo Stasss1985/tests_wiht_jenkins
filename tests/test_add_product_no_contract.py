@@ -25,7 +25,7 @@ def test_add_gold_no_contract(login_page):
 # product_page.compare_name_product()
 # product_page.take_screenshot()
 
-@pytest.mark.smoke
+@pytest.mark.regress
 def test_add_gold_qr_no_contract(open_crm_as_admin, lead_page, product_page):
     # Смена офиса
     lead_page.change_office_1_maya()
