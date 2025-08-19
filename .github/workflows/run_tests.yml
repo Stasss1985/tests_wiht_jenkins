@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: run smoke tests (auto)
+      - name: run smoke tests (auto-push)
         if: "github.event_name == 'push'"
         run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless
 
