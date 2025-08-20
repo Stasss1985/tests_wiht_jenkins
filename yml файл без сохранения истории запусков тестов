@@ -29,14 +29,6 @@ jobs:
           pip install -r requirements.txt
           pip install allure-pytest
 
-      # Загружаем предыдущие результаты тестов (если есть)
-      - name: Download previous allure results
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-history
-          path: allure-results/history
-        continue-on-error: true  # Пропускаем ошибку, если артефакта нет
-
       - name: run smoke tests (auto-push)
         if: "github.event_name == 'push'"
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
@@ -73,28 +65,14 @@ jobs:
           wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
           tar -zxvf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
-
       - name: Generate report
-        run: |
-          # Копируем историю в новую папку отчета перед генерацией
-          mkdir -p allure-report/history
-          cp -r allure-results/history/* allure-report/history/ || true
-          allure generate allure-results -o allure-report --clean
-
+        run: allure generate -c allure-results -o allure-report --clean
       - name: Save allure report
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report
           retention-days: 1
-
-      # Сохраняем результаты текущего запуска для истории
-      - name: Save allure results for history
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-history
-          path: allure-results
-          retention-days: 7  # Храним историю 7 дней
 
   publish-report:
     name: Report publication
@@ -109,15 +87,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: allure-report
-          path: allure-report
+          path: allure-report  # Скачиваем прямо в папку allure-report
 
       - name: Debug file structure
-        run: ls -R allure-report
+        run: ls -R allure-report  # Проверка содержимого (можно удалить после отладки)
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: allure-report
+          path: allure-report  # Теперь путь корректен
 
       - name: Deploy to GitHub Pages
         id: deployment
