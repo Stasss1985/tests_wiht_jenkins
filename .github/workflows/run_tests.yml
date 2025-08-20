@@ -10,10 +10,10 @@ on:
         default: 'smoke'
         type: choice
         options:
-        - smoke
-        - regress
-        - extended
-        - all
+          - smoke
+          - regress
+          - extended
+          - all
 
 jobs:
   run-tests:
@@ -69,12 +69,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: allure-report
-          path: .
+          path: allure-report  # Скачиваем прямо в папку allure-report
+
+      - name: Debug file structure
+        run: ls -R allure-report  # Проверка содержимого (можно удалить после отладки)
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: allure-report
+          path: allure-report  # Теперь путь корректен
 
       - name: Deploy to GitHub Pages
         id: deployment
