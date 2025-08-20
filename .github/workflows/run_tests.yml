@@ -42,15 +42,10 @@ jobs:
           wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
           tar -zxvf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
-
-      - name: Generate Allure report
-        if: always()
-        run: |
-          allure generate allure-results -o allure-report --clean
-
-      - name: Upload Allure report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Generate report
+        run: allure generate -c allure-results -o allure-report
+      - name: Save allure report
+        uses: actions/upload-artifact@v3
         with:
           name: allure-report
           path: allure-report
