@@ -29,7 +29,30 @@ jobs:
           pip install -r requirements.txt
           pip install allure-pytest
 
-      # ... шаги запуска тестов ...
+      - name: run smoke tests (auto-push)
+        if: "github.event_name == 'push'"
+        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+        continue-on-error: true
+
+      - name: run smoke tests
+        if: "github.event.inputs.test_type == 'smoke'"
+        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+        continue-on-error: true
+
+      - name: run regression tests
+        if: "github.event.inputs.test_type == 'regress'"
+        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+        continue-on-error: true
+
+      - name: run extended tests
+        if: "github.event.inputs.test_type == 'extended'"
+        run: pytest -m extended -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+        continue-on-error: true
+
+      - name: run all tests
+        if: "github.event.inputs.test_type == 'all'"
+        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+        continue-on-error: true
 
       - name: Set up JDK
         uses: actions/setup-java@v3
