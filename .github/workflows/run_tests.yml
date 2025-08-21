@@ -7,7 +7,8 @@ on:
       test_type:
         description: 'Test type (smoke/regress/extended/all)'
         required: true
-        default: 'smoke'
+        default:|
+          smoke
         type: choice
         options:
           - smoke
@@ -16,9 +17,13 @@ on:
           - all
 
 jobs:
+  ##########################################################################
+  # Запуск тестов, генерация отчёта и подготовка «чистой» версии
+  ##########################################################################
   run-tests:
     runs-on: ubuntu-latest
     steps:
+      # Checkout & Python
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
@@ -30,47 +35,41 @@ jobs:
           pip install -r requirements.txt
           pip install allure-pytest pytest
 
-      # Подготовка директорий
+      # Подготовка папок
       - name: Prepare directories
         run: |
           mkdir -p allure-results/history
           mkdir -p allure-report
 
-      # Загрузка истории (пропускаем ошибку если нет артефакта)
+      # Попытка взять старую историю
       - name: Download previous allure history
         uses: actions/download-artifact@v4
         with:
           name: allure-history
           path: allure-results/history
-        continue-on-error: true
+        continue-on-error: true   # первый запуск – нормально пропустить
 
-      # Запуск тестов
-      - name: run tests (auto-push)
-        if: "github.event_name == 'push'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
+      # Запуск тестов (один общий шаг)
+      - name: Run selected tests
+        env:
+          TYPE: ${{ github.event.inputs.test_type }}
+        run: |
+          [[ -z "$TYPE" ]] && TYPE="all"
 
-      - name: run smoke tests
-        if: "github.event.inputs.test_type == 'smoke'"
-        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
+          case "$TYPE" in
+            smoke)   MARK="-m smoke"   ;;
+            regress) MARK="-m regress" ;;
+            extended)MARK="-m extended";;
+            all)     MARK=""           ;;
+            *)       MARK=""           ;;
+          esac
 
-      - name: run regression tests
-        if: "github.event.inputs.test_type == 'regress'"
-        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
+          pytest $MARK -n 16 -v tests/test_add_product_no_contract.py \
+                --headless --alluredir=allure-results
+        # если хотите, чтобы падение тестов делало workflow неуспешным, уберите continue‑on‑error
+        continue-on-error: false
 
-      - name: run extended tests
-        if: "github.event.inputs.test_type == 'extended'"
-        run: pytest -m extended -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: run all tests
-        if: "github.event.inputs.test_type == 'all'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      # Настройка Allure
+      # JDK + Allure CLI
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
@@ -79,68 +78,78 @@ jobs:
 
       - name: Install Allure CLI
         run: |
-          wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
-          tar -zxvf allure-2.34.1.tgz
+          wget -q https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
+          tar -xzf allure-2.34. # распаковываем
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
 
-      # Создание executor.json
+      # executor.json
       - name: Create executor info
         run: |
-          echo '{
+          cat <<EOF > allure-results/executor.json
+          {
             "name": "GitHub Actions",
             "type": "github",
             "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
             "buildName": "Run #${{ github.run_number }}",
             "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }' > allure-results/executor.json
+          }
+          EOF
 
-      # Проверка результатов тестов
-      - name: Verify test results
+      # Проверка наличия результатов
+      - name: Verify test results exist
         run: |
-          if [ ! -d "allure-results" ] || [ -z "$(ls -A allure-results)" ]; then
-            echo "Error: No test results found in allure-results directory!"
+          if [ -z "$(ls -A allure-results/*.json 2>/dev/null)" ]; then
+            echo "No Allure result files found."
             exit 1
           fi
 
-      # Генерация отчета с очисткой
+      # Генерация отчёта
       - name: Generate Allure report
         run: |
-          # Удаляем символические ссылки перед генерацией
           find allure-results -type l -delete
-          
-          # Генерируем отчет
           allure generate allure-results -o allure-report --clean
-          
-          # Создаем базовую структуру для первого запуска
-          mkdir -p allure-report/history
-          touch allure-report/history/history.json
 
-      # Проверка сгенерированного отчета
-      - name: Verify report structure
+      # Очистка и раскрытие символических ссылок
+      - name: Prepare clean report (remove symlinks, trim history, drop big files)
         run: |
-          if [ ! -f "allure-report/index.html" ]; then
-            echo "Error: Report generation failed - index.html not found!"
+          cp -RL allure-report clean-report
+
+          if [ -d "clean-report/history" ]; then
+            cd clean-report/history
+            ls -1tr | head -n -5 | xargs -r rm -rf --
+            cd ../../..
+          fi
+
+          find clean-report -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) -size +1M -delete
+
+          SIZE=$(du -sb clean-report | cut -f1)
+          echo "Final report size: $SIZE bytes"
+          if (( SIZE > 500000000 )); then   # ~500 MiB
+            echo "Report is larger than 500 MiB, aborting."
             exit 1
           fi
 
-      # Сохранение артефактов
-      - name: Upload Allure report
+      # Артефакт для GitHub Pages
+      - name: Upload Allure report (static site)
         uses: actions/upload-artifact@v4
         with:
           name: github-pages
-          path: allure-report
+          path: clean-report
           retention-days: 1
 
-      - name: Save allure results for history
+      # Сохраняем результаты для следующей истории
         uses: actions/upload-artifact@v4
         with:
           name: allure-history
           path: allure-results
           retention-days: 7
 
+  ##########################################################################
+  # Деплой в GitHub Pages
+  ##########################################################################
   deploy-report:
     name: Deploy Allure Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest          # ← исправлено
     needs: run-tests
     permissions:
       id-token: write
@@ -151,27 +160,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: github-pages
-          path: deploy-files
+          path: site
 
-      # Очистка и подготовка к деплою
-      - name: Prepare deployment
+      - name: Validate site before publishing
         run: |
-          # Удаляем все символические ссылки
-          find deploy-files -type l -delete
-          
-          # Удаляем тяжелые временные файлы
-          find deploy-files -name '*.tmp' -delete
-          find deploy-files -name '*.log' -delete
-          
-          # Проверяем размер
-          echo "Deployment size:"
-          du -sh deploy-files
-          
-          # Проверяем обязательные файлы
-          if [ ! -f "deploy-files/index.html" ]; then
-            echo "Error: index.html not found in report!"
+          if [ ! -f "site/index.html" ]; then
+            echo "index.html not found in the downloaded artifact!"
+            ls -R site
             exit 1
           fi
+          echo "Site looks good – size:"
+          du -sh site
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
