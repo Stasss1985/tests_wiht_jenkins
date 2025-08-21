@@ -16,9 +16,6 @@ on:
           - all
 
 jobs:
-  ##########################################################################
-  # Запуск тестов, генерация отчёта и подготовка «чистой» версии
-  ##########################################################################
   run-tests:
     runs-on: ubuntu-latest
     steps:
@@ -65,8 +62,7 @@ jobs:
 
           pytest $MARK -n 16 -v tests/test_add_product_no_contract.py \
                 --headless --alluredir=allure-results
-        # если хотите, чтобы падение тестов делало workflow неуспешным, уберите continue‑on‑error
-        continue-on-error: true
+        continue-on-error: false   # пусть проваливается, если тесты упали
 
       # JDK + Allure CLI
       - name: Set up JDK
@@ -78,7 +74,7 @@ jobs:
       - name: Install Allure CLI
         run: |
           wget -q https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
-          tar -xzf allure-2.34. # распаковываем
+          tar -xzf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
 
       # executor.json
@@ -105,7 +101,9 @@ jobs:
       # Генерация отчёта
       - name: Generate Allure report
         run: |
+          # Убираем любые ссылки, которые могли появиться в результатах
           find allure-results -type l -delete
+
           allure generate allure-results -o allure-report --clean
 
       # Очистка и раскрытие символических ссылок
@@ -136,32 +134,31 @@ jobs:
           path: clean-report
           retention-days: 1
 
-        # Сохраняем результаты для следующей истории
-      - name: Upload allure-history report
+      # Сохраняем результаты для следующей истории
+      - name: Save allure results for next run
         uses: actions/upload-artifact@v4
         with:
           name: allure-history
           path: allure-results
           retention-days: 7
 
-  ##########################################################################
-  # Деплой в GitHub Pages
-  ##########################################################################
   deploy-report:
     name: Deploy Allure Report
-    runs-on: ubuntu-latest          # ← исправлено
+    runs-on: ubuntu-latest
     needs: run-tests
     permissions:
       id-token: write
       contents: read
       pages: write
     steps:
+      # Получаем артефакт, который мы назвали github-pages
       - name: Download report artifact
         uses: actions/download-artifact@v4
         with:
           name: github-pages
           path: site
 
+      # Последняя проверка (можно убрать, но удобно для дебага)
       - name: Validate site before publishing
         run: |
           if [ ! -f "site/index.html" ]; then
@@ -172,5 +169,6 @@ jobs:
           echo "Site looks good – size:"
           du -sh site
 
+      # Публикация
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
