@@ -28,17 +28,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pytest --version
-          
-            # Сохраняем результаты для истории следующих запусков
-      - name: Save allure results for history
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-history
-          path: allure-results
-          retention-days: 7
+          pip install allure-pytest pytest
 
-      # Загружаем историю предыдущих запусков
+      # Создаем папку для результатов
+      - name: Prepare directories
+        run: |
+          mkdir -p allure-results/history
+          mkdir -p allure-report
+
+      # Загружаем историю предыдущих запусков (если есть)
       - name: Download previous allure history
         uses: actions/download-artifact@v4
         with:
@@ -47,29 +45,9 @@ jobs:
         continue-on-error: true
 
       # Запуск тестов
-      - name: run tests (auto-push)
-        if: "github.event_name == 'push'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: run smoke tests
-        if: "github.event.inputs.test_type == 'smoke'"
-        run: pytest -m smoke -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: run regression tests
-        if: "github.event.inputs.test_type == 'regress'"
-        run: pytest -m regress -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: run extended tests
-        if: "github.event.inputs.test_type == 'extended'"
-        run: pytest -m extended -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: run all tests
-        if: "github.event.inputs.test_type == 'all'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+      - name: Run tests
+        run: |
+          pytest -v --alluredir=allure-results tests/
         continue-on-error: true
 
       - name: Set up JDK
@@ -84,35 +62,45 @@ jobs:
           tar -zxvf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
 
-      # Добавляем информацию о запуске
       - name: Create executor info
         run: |
           echo ' > allure-results/executor.json
 
+      # Проверяем наличие результатов тестов
+      - name: Verify test results
+        run: |
+          if [ ! -d "allure-results" ] || [ -z "$(ls -A allure-results)" ]; then
+            echo "Error: No test results found!"
+            exit 1
+          fi
+
       # Генерация отчета
       - name: Generate Allure report
         run: |
-          # Переносим историю из предыдущего отчета
-          if [ -d "allure-report/history" ]; then
-            mkdir -p allure-results/history
-            cp -r allure-report/history/* allure-results/history/ || true
-          fi
-          
-          # Генерируем новый отчет
           allure generate allure-results -o allure-report --clean
           
-          # Проверяем структуру
-          echo "Report structure:"
-          ls -la allure-report/
+          # Для первого запуска создаем пустую историю
+          if [ ! -d "allure-report/history" ]; then
+            mkdir -p allure-report/history
+          fi
 
-      # Сохраняем отчет для деплоя
+      # Сохраняем отчет для деплоя (только если есть файлы)
       - name: Upload Allure report
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report
           retention-days: 1
 
+      # Сохраняем результаты для истории (только если есть файлы)
+      - name: Save allure results for history
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history
+          path: allure-results
+          retention-days: 7
 
   deploy-report:
     name: Deploy Allure Report
@@ -131,10 +119,7 @@ jobs:
 
       - name: Verify report content
         run: |
-          echo "Allure report content:"
-          ls -la allure-report/
-          test -f allure-report/index.html || (echo "Error: index.html not found!" && exit 1)
+          test -f allure-report/index.html || (echo "Error: Report not generated!" && exit 1)
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        timeout-minutes: 11
