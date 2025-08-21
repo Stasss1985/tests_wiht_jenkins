@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 
 
 @pytest.mark.smoke
+@pytest.mark.first_test
 def test_add_gold_no_contract(login_page):
     login_page.open_page()
     # Смена офиса
