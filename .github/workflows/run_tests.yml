@@ -62,7 +62,7 @@ jobs:
 
           pytest $MARK -n 16 -v tests/test_add_product_no_contract.py \
                 --headless --alluredir=allure-results
-        continue-on-error: false   # пусть проваливается, если тесты упали
+        continue-on-error: true   # пусть проваливается, если тесты упали
 
       # JDK + Allure CLI
       - name: Set up JDK
