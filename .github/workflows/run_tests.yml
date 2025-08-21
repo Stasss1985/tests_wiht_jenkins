@@ -7,8 +7,7 @@ on:
       test_type:
         description: 'Test type (smoke/regress/extended/all)'
         required: true
-        default:|
-          smoke
+        default: 'smoke'
         type: choice
         options:
           - smoke
@@ -137,7 +136,8 @@ jobs:
           path: clean-report
           retention-days: 1
 
-      # Сохраняем результаты для следующей истории
+        # Сохраняем результаты для следующей истории
+      - name: Upload allure-history report
         uses: actions/upload-artifact@v4
         with:
           name: allure-history
