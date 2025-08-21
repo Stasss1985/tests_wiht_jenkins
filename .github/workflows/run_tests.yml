@@ -83,7 +83,7 @@ jobs:
           tar -zxvf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
 
-      # Создание executor.json (исправленная версия)
+      # Создание executor.json
       - name: Create executor info
         run: |
           echo '{
@@ -94,12 +94,34 @@ jobs:
             "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }' > allure-results/executor.json
 
-      # Генерация отчета
+      # Проверка результатов тестов
+      - name: Verify test results
+        run: |
+          if [ ! -d "allure-results" ] || [ -z "$(ls -A allure-results)" ]; then
+            echo "Error: No test results found in allure-results directory!"
+            exit 1
+          fi
+
+      # Генерация отчета с очисткой
       - name: Generate Allure report
         run: |
+          # Удаляем символические ссылки перед генерацией
+          find allure-results -type l -delete
+          
+          # Генерируем отчет
           allure generate allure-results -o allure-report --clean
-          # Создаем историю если она отсутствует
-          mkdir -p allure-report/history || true
+          
+          # Создаем базовую структуру для первого запуска
+          mkdir -p allure-report/history
+          touch allure-report/history/history.json
+
+      # Проверка сгенерированного отчета
+      - name: Verify report structure
+        run: |
+          if [ ! -f "allure-report/index.html" ]; then
+            echo "Error: Report generation failed - index.html not found!"
+            exit 1
+          fi
 
       # Сохранение артефактов
       - name: Upload Allure report
@@ -131,29 +153,25 @@ jobs:
           name: github-pages
           path: deploy-files
 
-      # Удаляем символические ссылки (если есть)
-      - name: Clean symlinks
+      # Очистка и подготовка к деплою
+      - name: Prepare deployment
         run: |
+          # Удаляем все символические ссылки
           find deploy-files -type l -delete
-
-      # Проверяем размер содержимого
-      - name: Check size
-        run: |
+          
+          # Удаляем тяжелые временные файлы
+          find deploy-files -name '*.tmp' -delete
+          find deploy-files -name '*.log' -delete
+          
+          # Проверяем размер
+          echo "Deployment size:"
           du -sh deploy-files
-          if [ $(du -s deploy-files | cut -f1) -gt 10000000 ]; then
-            echo "Error: Content exceeds 10GB limit"
+          
+          # Проверяем обязательные файлы
+          if [ ! -f "deploy-files/index.html" ]; then
+            echo "Error: index.html not found in report!"
             exit 1
           fi
 
-      # Упаковываем заново без лишних файлов
-      - name: Prepare clean deployment
-        run: |
-          mkdir -p clean-deploy
-          cp -r deploy-files/{index.html,app.js,history,data,styles,favicon.ico} clean-deploy/ || true
-          ls -la clean-deploy/
-
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        with:
-          artifact-name: github-pages
-          target-dir: clean-deploy  # Указываем очищенную папку
