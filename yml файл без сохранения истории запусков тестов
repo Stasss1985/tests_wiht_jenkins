@@ -29,7 +29,7 @@ jobs:
           pip install -r requirements.txt
           pip install allure-pytest
 
-      - name: run smoke tests (auto-push)
+      - name: run tests (auto-push)
         if: "github.event_name == 'push'"
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
         continue-on-error: true
