@@ -128,15 +128,32 @@ jobs:
       - name: Download report artifact
         uses: actions/download-artifact@v4
         with:
-          name: github-pages  # ← Должно совпадать с именем при загрузке
-          path: .
+          name: github-pages
+          path: deploy-files
 
-      - name: Verify report content
+      # Удаляем символические ссылки (если есть)
+      - name: Clean symlinks
         run: |
-          if [ ! -f "index.html" ]; then
-            echo "Error: Allure report not found!"
+          find deploy-files -type l -delete
+
+      # Проверяем размер содержимого
+      - name: Check size
+        run: |
+          du -sh deploy-files
+          if [ $(du -s deploy-files | cut -f1) -gt 10000000 ]; then
+            echo "Error: Content exceeds 10GB limit"
             exit 1
           fi
 
+      # Упаковываем заново без лишних файлов
+      - name: Prepare clean deployment
+        run: |
+          mkdir -p clean-deploy
+          cp -r deploy-files/{index.html,app.js,history,data,styles,favicon.ico} clean-deploy/ || true
+          ls -la clean-deploy/
+
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+        with:
+          artifact-name: github-pages
+          target-dir: clean-deploy  # Указываем очищенную папку
