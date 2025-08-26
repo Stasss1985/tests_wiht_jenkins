@@ -33,7 +33,6 @@ jobs:
 
       - name: Download previous artifacts
         run: |
-          # Функция для загрузки артефакта с проверкой
           download_artifact() {
             local ARTIFACT_NAME=$1
             local OUTPUT_FILE=$2
@@ -59,7 +58,6 @@ jobs:
                 "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$ARTIFACT_ID/zip" \
                 -o "$OUTPUT_FILE"
               
-              # Проверка, что файл действительно является ZIP-архивом
               if ! unzip -l "$OUTPUT_FILE" >/dev/null 2>&1; then
                 echo "Error: Downloaded file is not a valid ZIP archive"
                 rm -f "$OUTPUT_FILE"
@@ -69,20 +67,16 @@ jobs:
             fi
           }
 
-          # Создаем директории
           mkdir -p allure-results old_pages pages_history
           
-          # Пытаемся скачать артефакты
           if download_artifact "allure-results" "artifacts.zip"; then
             unzip -o artifacts.zip -d allure-results
           fi
           
           if download_artifact "github-pages" "pages.zip"; then
-            # Особенная обработка для github-pages
             mkdir -p temp_pages
             unzip -o pages.zip -d temp_pages
             
-            # Ищем tar-файл в распакованных данных
             if [ -f "temp_pages/artifact.tar" ]; then
               tar -xvf temp_pages/artifact.tar -C pages_history
               cp -r pages_history/history allure-results/ || true
@@ -167,7 +161,7 @@ jobs:
       - name: Store report
         uses: actions/upload-artifact@v4
         with:
-          name: github-pages
+          name: allure-report  # ИЗМЕНЕНО: новое уникальное имя
           path: _site
           retention-days: 1
 
@@ -176,11 +170,11 @@ jobs:
     needs: generate-report
     name: Report publication
     steps:
-      - name: Download github-pages artifact
+      - name: Download report artifact
         uses: actions/download-artifact@v4
         with:
-          name: github-pages
-          path: report-site  # Скачиваем в отдельную директорию
+          name: allure-report  # Совпадает с новым именем
+          path: report-site
 
       - name: Verify report content
         run: |
@@ -192,7 +186,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: report-site  # Используем скачанную директорию
+          path: report-site
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
