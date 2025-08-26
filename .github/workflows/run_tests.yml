@@ -23,17 +23,17 @@ jobs:
     runs-on: ubuntu-latest
     name: Download history
     steps:
-      - name: setup Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: sudo apt-get install -y jq curl
+        run: sudo apt-get install -y jq curl unzip
 
       - name: Download previous artifacts
         run: |
-          # Функция для загрузки артефакта
+          # Функция для загрузки артефакта с проверкой
           download_artifact() {
             local ARTIFACT_NAME=$1
             local OUTPUT_FILE=$2
@@ -58,25 +58,38 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$ARTIFACT_ID/zip" \
                 -o "$OUTPUT_FILE"
+              
+              # Проверка, что файл действительно является ZIP-архивом
+              if ! unzip -l "$OUTPUT_FILE" >/dev/null 2>&1; then
+                echo "Error: Downloaded file is not a valid ZIP archive"
+                rm -f "$OUTPUT_FILE"
+                return 1
+              fi
               return 0
             fi
           }
 
-          # Пытаемся скачать артефакты
-          download_artifact "allure-results" "artifacts.zip" || true
-          download_artifact "github-pages" "pages.zip" || true
-
-          # Создаем директории и распаковываем
+          # Создаем директории
           mkdir -p allure-results old_pages pages_history
           
-          if [ -f "artifacts.zip" ]; then
-            unzip artifacts.zip -d allure-results
+          # Пытаемся скачать артефакты
+          if download_artifact "allure-results" "artifacts.zip"; then
+            unzip -o artifacts.zip -d allure-results
           fi
           
-          if [ -f "pages.zip" ]; then
-            unzip pages.zip -d old_pages
-            tar -xvf old_pages/artifact.tar -C pages_history 2>/dev/null || true
-            cp -r pages_history/history allure-results/ 2>/dev/null || true
+          if download_artifact "github-pages" "pages.zip"; then
+            # Особенная обработка для github-pages
+            mkdir -p temp_pages
+            unzip -o pages.zip -d temp_pages
+            
+            # Ищем tar-файл в распакованных данных
+            if [ -f "temp_pages/artifact.tar" ]; then
+              tar -xvf temp_pages/artifact.tar -C pages_history
+              cp -r pages_history/history allure-results/ || true
+            else
+              echo "Warning: artifact.tar not found in github-pages archive"
+            fi
+            rm -rf temp_pages
           fi
 
       - name: Store allure history
@@ -93,7 +106,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: setup Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
