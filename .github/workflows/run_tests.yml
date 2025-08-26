@@ -176,13 +176,23 @@ jobs:
     needs: generate-report
     name: Report publication
     steps:
-      - name: Download artifacts
+      - name: Download github-pages artifact
         uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: report-site  # Скачиваем в отдельную директорию
+
+      - name: Verify report content
+        run: |
+          echo "Contents of report-site:"
+          ls -la report-site
+          echo "Checking index.html exists:"
+          [ -f "report-site/index.html" ] && echo "OK" || echo "Missing index.html"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: _site
+          path: report-site  # Используем скачанную директорию
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
