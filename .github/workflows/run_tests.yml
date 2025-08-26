@@ -20,44 +20,67 @@ permissions:
 
 jobs:
   download-history:
-    # if: false
     runs-on: ubuntu-latest
     name: Download history
     steps:
       - name: setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: >
-          ARTIFACT_ID=$(curl -L 
-          -H "Accept: application/vnd.github+json" 
-          -H "X-GitHub-Api-Version: 2022-11-28" 
-          "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts?name=allure-results" 
-          | python -c "import sys, json; print(json.load(sys.stdin)['artifacts'][0]['id']);") 
-          &&
-          curl -L 
-          -H "Accept: application/vnd.github+json" 
-          -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" 
-          -H "X-GitHub-Api-Version: 2022-11-28" 
-          https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$ARTIFACT_ID/zip 
-          -o artifacts.zip &&
-          REPORT_ID=$(curl -L 
-          -H "Accept: application/vnd.github+json" 
-          -H "X-GitHub-Api-Version: 2022-11-28" 
-          "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts?name=github-pages" 
-          | python -c "import sys, json; print(json.load(sys.stdin)['artifacts'][0]['id']);") 
-          &&
-          curl -L 
-          -H "Accept: application/vnd.github+json" 
-          -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" 
-          -H "X-GitHub-Api-Version: 2022-11-28" 
-          https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$REPORT_ID/zip 
-          -o pages.zip
-      - run: mkdir allure-results && unzip artifacts.zip -d allure-results
-      - run: mkdir old_pages pages_history && unzip pages.zip -d old_pages && tar -xvf old_pages/artifact.tar -C pages_history
-      - run: cp pages_history/history/* allure-results && cp -r pages_history/history allure-results
+
+      - name: Install dependencies
+        run: sudo apt-get install -y jq curl
+
+      - name: Download previous artifacts
+        run: |
+          # Функция для загрузки артефакта
+          download_artifact() {
+            local ARTIFACT_NAME=$1
+            local OUTPUT_FILE=$2
+            
+            echo "Trying to download $ARTIFACT_NAME..."
+            RESPONSE=$(curl -sS -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts?name=$ARTIFACT_NAME")
+            
+            ARTIFACT_ID=$(echo "$RESPONSE" | jq -r '.artifacts[0].id // empty')
+            
+            if [ -z "$ARTIFACT_ID" ]; then
+              echo "No artifact found with name '$ARTIFACT_NAME'"
+              return 1
+            else
+              echo "Downloading $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
+              curl -sS -L \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$ARTIFACT_ID/zip" \
+                -o "$OUTPUT_FILE"
+              return 0
+            fi
+          }
+
+          # Пытаемся скачать артефакты
+          download_artifact "allure-results" "artifacts.zip" || true
+          download_artifact "github-pages" "pages.zip" || true
+
+          # Создаем директории и распаковываем
+          mkdir -p allure-results old_pages pages_history
+          
+          if [ -f "artifacts.zip" ]; then
+            unzip artifacts.zip -d allure-results
+          fi
+          
+          if [ -f "pages.zip" ]; then
+            unzip pages.zip -d old_pages
+            tar -xvf old_pages/artifact.tar -C pages_history 2>/dev/null || true
+            cp -r pages_history/history allure-results/ 2>/dev/null || true
+          fi
+
       - name: Store allure history
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results
@@ -69,28 +92,36 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
       - name: Install Chrome
-        run: sudo apt-get install google-chrome-stable
-      - name: install dependencies
+        run: sudo apt-get install -y google-chrome-stable
+
+      - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Download all workflow run artifacts
+
+      - name: Download artifacts
         uses: actions/download-artifact@v4
+
       - name: first_test
         if: "github.event.inputs.deployment_target == 'first_test'"
         run: pytest -m first_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
         continue-on-error: true
+
       - name: second_test
         if: "github.event.inputs.deployment_target == 'second_test'"
         run: pytest -m second_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
         continue-on-error: true
+
       - name: all
         if: "github.event.inputs.deployment_target == 'all'"
         run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
         continue-on-error: true
+
       - name: Store allure results
         uses: actions/upload-artifact@v4
         with:
@@ -107,14 +138,20 @@ jobs:
         with:
           distribution: 'microsoft'
           java-version: '17'
-      - run: |
+
+      - name: Install Allure
+        run: |
           wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
           tar -zxvf allure-2.34.1.tgz
           echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
-      - name: Download all workflow run artifacts
+
+      - name: Download artifacts
         uses: actions/download-artifact@v4
-      - run: allure generate -c allure-results -o _site
-      - name: Store generated report
+
+      - name: Generate report
+        run: allure generate -c allure-results -o _site
+
+      - name: Store report
         uses: actions/upload-artifact@v4
         with:
           name: github-pages
@@ -126,12 +163,13 @@ jobs:
     needs: generate-report
     name: Report publication
     steps:
-      - name: Download all workflow run artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
+
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
