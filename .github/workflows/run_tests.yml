@@ -42,7 +42,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts?name=allure-results")
+            "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts?name=allure-results")
           
           echo "API Response for allure-results: $RESPONSE"
           
@@ -56,7 +56,7 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts/$ARTIFACT_ID/zip" \
+              "https://api.github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts/$ARTIFACT_ID/zip" \
               -o artifacts.zip
           fi
           
@@ -65,7 +65,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts?name=github-pages")
+            "https://api.github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts?name=github-pages")
           
           echo "API Response for github-pages: $REPORT_RESPONSE"
           
@@ -79,7 +79,7 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts/$REPORT_ID/zip" \
+              "https://api.github.com/Stasss1985/tests_wiht_jenkins/settings/secrets/actions/artifacts/$REPORT_ID/zip" \
               -o pages.zip
           fi
 
