@@ -89,7 +89,7 @@ jobs:
       - name: Store allure history
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
+          name: allure-history  # Изменено имя для избежания конфликта
           path: allure-results
           retention-days: 1
 
@@ -106,33 +106,43 @@ jobs:
           python-version: "3.13"
 
       - name: Install Chrome
-        run: sudo apt-get install -y google-chrome-stable
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Download artifacts
+      - name: Download history artifact
         uses: actions/download-artifact@v4
+        with:
+          name: allure-history  # Скачиваем историю под новым именем
+          path: allure-history
 
-      - name: first_test
-        if: "github.event.inputs.deployment_target == 'first_test'"
-        run: pytest -m first_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
+      - name: Prepare allure-results directory
+        run: |
+          mkdir -p allure-results
+          # Копируем историю в allure-results
+          if [ -d "allure-history/history" ]; then
+            cp -r allure-history/history allure-results/
+          fi
 
-      - name: second_test
-        if: "github.event.inputs.deployment_target == 'second_test'"
-        run: pytest -m second_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
-        continue-on-error: true
-
-      - name: all
-        if: "github.event.inputs.deployment_target == 'all'"
-        run: pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+      - name: Run tests
+        run: |
+          # Определяем параметры запуска в зависимости от выбора
+          if [ "${{ github.event.inputs.deployment_target }}" == "first_test" ]; then
+            pytest -m first_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          elif [ "${{ github.event.inputs.deployment_target }}" == "second_test" ]; then
+            pytest -m second_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          else
+            pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          fi
         continue-on-error: true
 
       - name: Store allure results
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
+          name: allure-results-current  # Уникальное имя для текущих результатов
           path: allure-results
           retention-days: 1
 
@@ -154,6 +164,9 @@ jobs:
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        with:
+          name: allure-results-current  # Скачиваем текущие результаты
+          path: allure-results
 
       - name: Generate report
         run: allure generate -c allure-results -o _site
@@ -161,7 +174,7 @@ jobs:
       - name: Store report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report  # ИЗМЕНЕНО: новое уникальное имя
+          name: allure-report
           path: _site
           retention-days: 1
 
