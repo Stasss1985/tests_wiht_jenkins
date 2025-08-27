@@ -1,0 +1,205 @@
+name: Automated tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_target:
+        description: Choose target
+        required: true
+        default: second_test
+        type: choice
+        options:
+          - first_test
+          - second_test
+          - all
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  download-history:
+    runs-on: ubuntu-latest
+    name: Download history
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: sudo apt-get install -y jq curl unzip
+
+      - name: Download previous artifacts
+        run: |
+          download_artifact() {
+            local ARTIFACT_NAME=$1
+            local OUTPUT_FILE=$2
+
+            echo "Trying to download $ARTIFACT_NAME..."
+            RESPONSE=$(curl -sS -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts?name=$ARTIFACT_NAME")
+
+            ARTIFACT_ID=$(echo "$RESPONSE" | jq -r '.artifacts[0].id // empty')
+
+            if [ -z "$ARTIFACT_ID" ]; then
+              echo "No artifact found with name '$ARTIFACT_NAME'"
+              return 1
+            else
+              echo "Downloading $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
+              curl -sS -L \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.MY_SECRET_REPO }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/Stasss1985/tests_wiht_jenkins/actions/artifacts/$ARTIFACT_ID/zip" \
+                -o "$OUTPUT_FILE"
+
+              if ! unzip -l "$OUTPUT_FILE" >/dev/null 2>&1; then
+                echo "Error: Downloaded file is not a valid ZIP archive"
+                rm -f "$OUTPUT_FILE"
+                return 1
+              fi
+              return 0
+            fi
+          }
+
+          mkdir -p allure-results old_pages pages_history
+
+          if download_artifact "allure-results" "artifacts.zip"; then
+            unzip -o artifacts.zip -d allure-results
+          fi
+
+          if download_artifact "github-pages" "pages.zip"; then
+            mkdir -p temp_pages
+            unzip -o pages.zip -d temp_pages
+
+            if [ -f "temp_pages/artifact.tar" ]; then
+              tar -xvf temp_pages/artifact.tar -C pages_history
+              cp -r pages_history/history allure-results/ || true
+            else
+              echo "Warning: artifact.tar not found in github-pages archive"
+            fi
+            rm -rf temp_pages
+          fi
+
+      - name: Store allure history
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history  # Изменено имя для избежания конфликта
+          path: allure-results
+          retention-days: 1
+
+  test:
+    runs-on: ubuntu-latest
+    needs: download-history
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download history artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-history  # Скачиваем историю под новым именем
+          path: allure-history
+
+      - name: Prepare allure-results directory
+        run: |
+          mkdir -p allure-results
+          # Копируем историю в allure-results
+          if [ -d "allure-history/history" ]; then
+            cp -r allure-history/history allure-results/
+          fi
+
+      - name: Run tests
+        run: |
+          # Определяем параметры запуска в зависимости от выбора
+          if [ "${{ github.event.inputs.deployment_target }}" == "first_test" ]; then
+            pytest -m first_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          elif [ "${{ github.event.inputs.deployment_target }}" == "second_test" ]; then
+            pytest -m second_test -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          else
+            pytest -n 16 -v tests/test_add_product_no_contract.py --headless --alluredir=allure-results
+          fi
+        continue-on-error: true
+
+      - name: Store allure results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-current  # Уникальное имя для текущих результатов
+          path: allure-results
+          retention-days: 1
+
+  generate-report:
+    runs-on: ubuntu-latest
+    needs: test
+    name: Generate report
+    steps:
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'microsoft'
+          java-version: '17'
+
+      - name: Install Allure
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
+          tar -zxvf allure-2.34.1.tgz
+          echo "$(pwd)/allure-2.34.1/bin" >> $GITHUB_PATH
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-current  # Скачиваем текущие результаты
+          path: allure-results
+
+      - name: Generate report
+        run: allure generate -c allure-results -o _site
+
+      - name: Store report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: _site
+          retention-days: 1
+
+  publish-report:
+    runs-on: ubuntu-latest
+    needs: generate-report
+    name: Report publication
+    steps:
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-report
+          path: report-site
+
+      - name: Verify report content
+        run: |
+          echo "Contents of report-site:"
+          ls -la report-site
+          echo "Checking index.html exists:"
+          [ -f "report-site/index.html" ] && echo "OK" || echo "Missing index.html"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: report-site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
