@@ -4,3 +4,4 @@ venv
 /allure-results
 /__pycache__*
 /screenshots
+wg0.conf
