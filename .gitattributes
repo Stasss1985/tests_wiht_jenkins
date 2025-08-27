@@ -1,0 +1,10 @@
+# Указываем Linguist игнорировать отчёты
+allure-report/** linguist-documentation
+*.html linguist-documentation
+
+# Помечаем Python-файлы как основной код
+*.py linguist-detectable=true
+
+# Исключаем зависимости
+venv/** linguist-vendored
+.venv/** linguist-vendored
