@@ -110,7 +110,7 @@ def person_page(driver):
 def open_crm_as_admin(login_page):
     login_page.open_page()
     with allure.step('enter correct login and password'):
-        login_page.fill_login_form_good('krivko.su@codeagency.ru', 'DLNKsfd3214$%23')
+        login_page.fill_login_form_good('', '')
     with allure.step('Check correct url'):
         login_page.check_expected_url('https://www.google.com/')
     login_page.take_screenshot()
